@@ -1,0 +1,37 @@
+name: Swift
+
+on:
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: macos-15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@master
+      with:
+        fetch-depth: 0
+    - name: Cache
+      uses: actions/cache@master
+      with:
+        path: /Users/runner/Library/Developer/Xcode/DerivedData/**/SourcePackages/checkouts
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+    - name: Write config.swift
+      run: |
+        echo "${{ secrets.CONFIG_SWIFT }}" > Sources/AoC/config.swift
+    - name: Run unit tests
+      run: |
+        xcodebuild test -scheme AoC -destination platform="macOS"
+    - name: Slather
+      run: |
+        bundle
+        bundle exec slather coverage --scheme AoC --cobertura-xml --source-directory Sources/AoCKit/ --output-directory . --binary-basename AoCKit.framework AoC.xcodeproj
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: cobertura.xml
